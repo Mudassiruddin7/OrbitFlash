@@ -1,0 +1,149 @@
+version: '3.8'
+
+services:
+  # Redis service for caching and pub/sub
+  redis:
+    image: redis:7-alpine
+    container_name: orbitflash-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - orbitflash-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Arbitrage Detector Service
+  arbitrage-detector:
+    build:
+      context: .
+      dockerfile: packages/arbitrage-detector/Dockerfile
+    container_name: orbitflash-arbitrage-detector
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - REDIS_URL=redis://redis:6379
+      - ARBITRUM_RPC_URL=${ARBITRUM_RPC_URL}
+      - ARBITRUM_WS_URL=${ARBITRUM_WS_URL}
+      - CHAINLINK_PRICE_FEEDS=${CHAINLINK_PRICE_FEEDS}
+      - UNISWAP_V3_FACTORY=${UNISWAP_V3_FACTORY}
+      - SUSHISWAP_FACTORY=${SUSHISWAP_FACTORY}
+      - CURVE_REGISTRY=${CURVE_REGISTRY}
+      - BALANCER_VAULT=${BALANCER_VAULT}
+      - MIN_PROFIT_THRESHOLD=${MIN_PROFIT_THRESHOLD:-0.01}
+      - MAX_SLIPPAGE=${MAX_SLIPPAGE:-0.005}
+      - CONFIDENCE_THRESHOLD=${CONFIDENCE_THRESHOLD:-0.7}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - orbitflash-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  # Strategy Engine Service
+  strategy-engine:
+    build:
+      context: .
+      dockerfile: packages/strategy-engine/Dockerfile
+    container_name: orbitflash-strategy-engine
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - REDIS_URL=redis://redis:6379
+      - PROFIT_WEIGHT=${PROFIT_WEIGHT:-0.5}
+      - RISK_WEIGHT=${RISK_WEIGHT:-0.3}
+      - COMPETITION_WEIGHT=${COMPETITION_WEIGHT:-0.2}
+      - MIN_PROFIT_THRESHOLD=${MIN_PROFIT_THRESHOLD:-0.01}
+      - MAX_POSITION_SIZE=${MAX_POSITION_SIZE:-1000000}
+      - MAX_SLIPPAGE=${MAX_SLIPPAGE:-0.01}
+      - MAX_GAS_PRICE_GWEI=${MAX_GAS_PRICE_GWEI:-100}
+      - QUEUE_MAX_SIZE=${QUEUE_MAX_SIZE:-1000}
+      - OPPORTUNITY_TTL_MS=${OPPORTUNITY_TTL_MS:-30000}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+      arbitrage-detector:
+        condition: service_healthy
+    networks:
+      - orbitflash-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  # Gas Optimizer Service
+  gas-optimizer:
+    build:
+      context: .
+      dockerfile: packages/gas-optimizer/Dockerfile
+    container_name: orbitflash-gas-optimizer
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - REDIS_URL=redis://redis:6379
+      - ARBITRUM_RPC_URL=${ARBITRUM_RPC_URL}
+      - ARBITRUM_WS_URL=${ARBITRUM_WS_URL}
+      - ORBIT_FLASH_CONTRACT_ADDRESS=${ORBIT_FLASH_CONTRACT_ADDRESS}
+      - GAS_PRICE_BUFFER_PERCENT=${GAS_PRICE_BUFFER_PERCENT:-10}
+      - GAS_LIMIT_BUFFER_PERCENT=${GAS_LIMIT_BUFFER_PERCENT:-20}
+      - MAX_GAS_PRICE_GWEI=${MAX_GAS_PRICE_GWEI:-100}
+      - MIN_GAS_PRICE_GWEI=${MIN_GAS_PRICE_GWEI:-0.1}
+      - PRIORITY_FEE_MULTIPLIER=${PRIORITY_FEE_MULTIPLIER:-1.2}
+      - LOW_URGENCY_GAS_MULTIPLIER=${LOW_URGENCY_GAS_MULTIPLIER:-1.0}
+      - MEDIUM_URGENCY_GAS_MULTIPLIER=${MEDIUM_URGENCY_GAS_MULTIPLIER:-1.2}
+      - HIGH_URGENCY_GAS_MULTIPLIER=${HIGH_URGENCY_GAS_MULTIPLIER:-1.5}
+      - UNISWAP_V3_ROUTER=${UNISWAP_V3_ROUTER}
+      - SUSHISWAP_ROUTER=${SUSHISWAP_ROUTER}
+      - CURVE_ROUTER=${CURVE_ROUTER}
+      - BALANCER_VAULT=${BALANCER_VAULT}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+      strategy-engine:
+        condition: service_healthy
+    networks:
+      - orbitflash-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  # Monitoring Service (placeholder for future implementation)
+  monitoring:
+    image: nginx:alpine
+    container_name: orbitflash-monitoring
+    ports:
+      - "8080:80"
+    volumes:
+      - ./monitoring/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./monitoring/html:/usr/share/nginx/html:ro
+    depends_on:
+      - arbitrage-detector
+      - strategy-engine
+      - gas-optimizer
+    networks:
+      - orbitflash-network
+    restart: unless-stopped
+
+networks:
+  orbitflash-network:
+    driver: bridge
+    name: orbitflash-network
+
+volumes:
+  redis_data:
+    driver: local
+    name: orbitflash-redis-data

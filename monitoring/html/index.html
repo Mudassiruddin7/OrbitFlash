@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrbitFlash MEV Arbitrage System - Monitoring Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .service-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+
+        .service-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .service-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 24px;
+            color: white;
+        }
+
+        .arbitrage-detector .service-icon { background: #4CAF50; }
+        .strategy-engine .service-icon { background: #2196F3; }
+        .gas-optimizer .service-icon { background: #FF9800; }
+        .redis .service-icon { background: #DC382D; }
+
+        .service-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .service-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-online { background: #4CAF50; }
+        .status-offline { background: #f44336; }
+        .status-loading { background: #FFC107; animation: pulse 2s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .service-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2196F3;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1976D2;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .system-overview {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .overview-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .overview-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            opacity: 0.8;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 OrbitFlash MEV System</h1>
+            <p>Real-time Arbitrage Monitoring Dashboard</p>
+        </div>
+
+        <div class="system-overview">
+            <h2 class="overview-title">System Overview</h2>
+            <div class="overview-stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-opportunities">-</div>
+                    <div class="stat-label">Opportunities Detected</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="executed-trades">-</div>
+                    <div class="stat-label">Trades Executed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-profit">-</div>
+                    <div class="stat-label">Total Profit (ETH)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="success-rate">-</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="services-grid">
+            <div class="service-card arbitrage-detector">
+                <div class="service-header">
+                    <div class="service-icon">🔍</div>
+                    <div class="service-title">Arbitrage Detector</div>
+                </div>
+                <div class="service-status">
+                    <div class="status-indicator status-loading" id="detector-status"></div>
+                    <span id="detector-status-text">Checking...</span>
+                </div>
+                <div class="service-metrics">
+                    <div class="metric">
+                        <div class="metric-value" id="detector-opportunities">-</div>
+                        <div class="metric-label">Opportunities Found</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="detector-uptime">-</div>
+                        <div class="metric-label">Uptime</div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="checkHealth('arbitrage')">Health Check</button>
+                    <button class="btn btn-secondary" onclick="viewLogs('arbitrage')">View Logs</button>
+                </div>
+            </div>
+
+            <div class="service-card strategy-engine">
+                <div class="service-header">
+                    <div class="service-icon">⚡</div>
+                    <div class="service-title">Strategy Engine</div>
+                </div>
+                <div class="service-status">
+                    <div class="status-indicator status-loading" id="strategy-status"></div>
+                    <span id="strategy-status-text">Checking...</span>
+                </div>
+                <div class="service-metrics">
+                    <div class="metric">
+                        <div class="metric-value" id="strategy-queue">-</div>
+                        <div class="metric-label">Queue Size</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="strategy-processed">-</div>
+                        <div class="metric-label">Processed</div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="checkHealth('strategy')">Health Check</button>
+                    <button class="btn btn-secondary" onclick="viewQueue()">View Queue</button>
+                </div>
+            </div>
+
+            <div class="service-card gas-optimizer">
+                <div class="service-header">
+                    <div class="service-icon">⛽</div>
+                    <div class="service-title">Gas Optimizer</div>
+                </div>
+                <div class="service-status">
+                    <div class="status-indicator status-loading" id="gas-status"></div>
+                    <span id="gas-status-text">Checking...</span>
+                </div>
+                <div class="service-metrics">
+                    <div class="metric">
+                        <div class="metric-value" id="gas-price">-</div>
+                        <div class="metric-label">Gas Price (gwei)</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="gas-optimized">-</div>
+                        <div class="metric-label">Optimized</div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="checkHealth('gas')">Health Check</button>
+                    <button class="btn btn-secondary" onclick="viewGasInfo()">Gas Info</button>
+                </div>
+            </div>
+
+            <div class="service-card redis">
+                <div class="service-header">
+                    <div class="service-icon">💾</div>
+                    <div class="service-title">Redis Cache</div>
+                </div>
+                <div class="service-status">
+                    <div class="status-indicator status-loading" id="redis-status"></div>
+                    <span id="redis-status-text">Checking...</span>
+                </div>
+                <div class="service-metrics">
+                    <div class="metric">
+                        <div class="metric-value" id="redis-memory">-</div>
+                        <div class="metric-label">Memory Usage</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="redis-connections">-</div>
+                        <div class="metric-label">Connections</div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="checkRedis()">Check Redis</button>
+                    <button class="btn btn-secondary" onclick="flushCache()">Flush Cache</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>OrbitFlash MEV Arbitrage System | Last updated: <span id="last-updated">-</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Update last updated timestamp
+        function updateTimestamp() {
+            document.getElementById('last-updated').textContent = new Date().toLocaleString();
+        }
+
+        // Check service health
+        async function checkHealth(service) {
+            const endpoints = {
+                'arbitrage': '/api/arbitrage/health',
+                'strategy': '/api/strategy/health',
+                'gas': '/api/gas/health'
+            };
+
+            try {
+                const response = await fetch(endpoints[service]);
+                const data = await response.json();
+                console.log(`${service} health:`, data);
+                alert(`${service} service is ${response.ok ? 'healthy' : 'unhealthy'}`);
+            } catch (error) {
+                console.error(`Error checking ${service} health:`, error);
+                alert(`Failed to check ${service} service health`);
+            }
+        }
+
+        // Placeholder functions for other actions
+        function viewLogs(service) {
+            alert(`Viewing logs for ${service} service (feature coming soon)`);
+        }
+
+        function viewQueue() {
+            window.open('/api/strategy/queue', '_blank');
+        }
+
+        function viewGasInfo() {
+            window.open('/api/gas/current', '_blank');
+        }
+
+        function checkRedis() {
+            alert('Redis health check (feature coming soon)');
+        }
+
+        function flushCache() {
+            if (confirm('Are you sure you want to flush the Redis cache?')) {
+                alert('Cache flush (feature coming soon)');
+            }
+        }
+
+        // Initialize dashboard
+        function initDashboard() {
+            updateTimestamp();
+            
+            // Set initial status indicators
+            const services = ['detector', 'strategy', 'gas', 'redis'];
+            services.forEach(service => {
+                const statusEl = document.getElementById(`${service}-status`);
+                const textEl = document.getElementById(`${service}-status-text`);
+                
+                // Simulate checking status
+                setTimeout(() => {
+                    statusEl.className = 'status-indicator status-online';
+                    textEl.textContent = 'Online';
+                }, Math.random() * 2000 + 1000);
+            });
+
+            // Update metrics periodically
+            setInterval(() => {
+                updateTimestamp();
+                // Add real metric updates here
+            }, 30000);
+        }
+
+        // Start dashboard when page loads
+        document.addEventListener('DOMContentLoaded', initDashboard);
+    </script>
+</body>
+</html>

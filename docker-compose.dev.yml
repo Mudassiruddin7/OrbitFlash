@@ -1,0 +1,80 @@
+version: '3.8'
+
+# Development-specific docker-compose override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # Redis with development configuration
+  redis:
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes --loglevel verbose
+
+  # Arbitrage Detector with development settings
+  arbitrage-detector:
+    build:
+      context: .
+      dockerfile: packages/arbitrage-detector/Dockerfile
+      target: builder  # Use builder stage for development
+    volumes:
+      - ./packages/arbitrage-detector/src:/app/packages/arbitrage-detector/src
+      - ./packages/shared-types/src:/app/packages/shared-types/src
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - ENABLE_HOT_RELOAD=true
+    command: ["npm", "run", "dev"]
+
+  # Strategy Engine with development settings
+  strategy-engine:
+    build:
+      context: .
+      dockerfile: packages/strategy-engine/Dockerfile
+      target: builder
+    volumes:
+      - ./packages/strategy-engine/src:/app/packages/strategy-engine/src
+      - ./packages/shared-types/src:/app/packages/shared-types/src
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - ENABLE_HOT_RELOAD=true
+    command: ["npm", "run", "dev"]
+
+  # Gas Optimizer with development settings
+  gas-optimizer:
+    build:
+      context: .
+      dockerfile: packages/gas-optimizer/Dockerfile
+      target: builder
+    volumes:
+      - ./packages/gas-optimizer/src:/app/packages/gas-optimizer/src
+      - ./packages/shared-types/src:/app/packages/shared-types/src
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - ENABLE_HOT_RELOAD=true
+    command: ["npm", "run", "dev"]
+
+  # Development tools
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: orbitflash-redis-commander
+    hostname: redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    networks:
+      - orbitflash-network
+    depends_on:
+      - redis
+
+volumes:
+  redis_dev_data:
+    driver: local
+    name: orbitflash-redis-dev-data
