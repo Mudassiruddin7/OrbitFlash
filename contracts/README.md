@@ -4,46 +4,98 @@ This directory contains the smart contracts for the OrbitFlash arbitrage system.
 
 ## Overview
 
-The main contract is `OrbitFlashArbitrage.sol`, which implements flash loan arbitrage using Aave V3 on Arbitrum One.
+The main contract is `OrbitFlashArbitrage.sol`, which enables flash loan arbitrage using Aave V3 on Arbitrum. It allows anyone to execute arbitrage trades across multiple DEXs in a single transaction, with profit sharing and robust security features.
 
 ## Features
 
-- **Flash Loan Integration**: Uses Aave V3 flash loans for capital-efficient arbitrage
-- **Multi-DEX Support**: Execute trades across multiple DEXs in a single transaction
-- **Security Features**: Owner-only access, reentrancy protection, emergency withdrawals
-- **Gas Optimization**: Unchecked loop increments and efficient storage usage
+- **Aave V3 Flash Loan Integration**: Capital-efficient arbitrage using flash loans.
+- **Multi-DEX Arbitrage**: Execute swaps across multiple DEXs atomically.
+- **Profit Sharing**: Net profit is split between the contract owner (default 2% fee, up to 5%) and the arbitrage initiator.
+- **Permissionless Execution**: Anyone can call `executeArbitrage`.
+- **Security**: Includes reentrancy protection, owner-only emergency withdrawals, and strict input validation.
+- **Emergency Withdrawals**: Owner can withdraw any tokens in case of stuck funds.
 
-## Contract Structure
+## Contract Details
 
 ### OrbitFlashArbitrage.sol
 
-Main arbitrage contract with the following key functions:
+#### Key Functions
 
-- `executeArbitrage()`: Initiates flash loan arbitrage
-- `executeOperation()`: Aave callback function that executes the arbitrage logic
-- `_executeArbitrageTrades()`: Private function that executes trades across DEXs
+- `executeArbitrage(ArbitrageParams calldata params)`: Initiates a flash loan and executes arbitrage trades. Tracks the initiator for profit sharing.
+- `executeOperation(...)`: Aave flash loan callback. Executes trades, calculates profit, repays loan, and distributes profit.
+- `updateOwnerFee(uint256 newFeeBasisPoints)`: Owner can update the fee (max 5%).
+- `emergencyWithdraw(address token, uint256 amount)`: Owner-only withdrawal of specific token and amount.
+- `emergencyWithdrawAll(address token)`: Owner-only withdrawal of all of a specific token.
+- `getTokenBalance(address token)`: View token balance held by contract.
+- `canExecuteFlashLoan(address asset, uint256 amount)`: Checks if a flash loan can be executed for a given asset/amount.
 
-### ArbitrageParams Struct
+#### ArbitrageParams Struct
 
 ```solidity
 struct ArbitrageParams {
-    address tokenIn;        // Input token address
-    address tokenOut;       // Output token address
-    uint256 amountIn;       // Amount to borrow via flash loan
-    uint256 minProfit;      // Minimum profit threshold
-    address[] dexAddresses; // Array of DEX contract addresses
-    bytes[] swapCalldata;   // Array of encoded swap function calls
+   address tokenIn;        // Input token address
+   address tokenOut;       // Output token address
+   uint256 amountIn;       // Amount to borrow via flash loan
+   uint256 minProfit;      // Minimum profit threshold
+   address[] dexAddresses; // Array of DEX contract addresses
+   bytes[] swapCalldata;   // Array of encoded swap function calls
+   address initiator;      // Arbitrage initiator (set automatically)
 }
 ```
 
-## Setup
+#### Events
+
+- `ArbitrageExecuted`: Emitted on successful arbitrage with details.
+- `ArbitrageFailed`: Emitted if a DEX call fails or profit is insufficient.
+- `OwnerFeeUpdated`: Emitted when owner fee is changed.
+
+#### Security
+
+- **ReentrancyGuard**: Protects against reentrancy attacks.
+- **Ownable**: Owner-only functions for fee updates and emergency withdrawals.
+- **Input Validation**: Checks for valid tokens, amounts, and DEX calldata.
+- **No Ether Acceptance**: Contract rejects direct Ether transfers.
+
+## Usage
+
+1. Deploy the contract with the Aave PoolAddressesProvider address.
+2. Call `executeArbitrage` with the required parameters to initiate a flash loan and arbitrage.
+3. Owner can update fee and withdraw stuck tokens if needed.
+
+## Example
+
+```solidity
+OrbitFlashArbitrage.executeArbitrage(
+   ArbitrageParams({
+      tokenIn: 0x...,         // Token to borrow
+      tokenOut: 0x...,        // Token to receive
+      amountIn: 1000e18,      // Amount to borrow
+      minProfit: 10e18,       // Minimum profit required
+      dexAddresses: [dex1, dex2],
+      swapCalldata: [calldata1, calldata2],
+      initiator: address(0)   // Will be set automatically
+   })
+);
+```
+
+## Notes
+
+- The contract is designed for use with Aave V3 and ERC20 tokens.
+- Owner fee is configurable up to 5%.
+- All arbitrage logic is atomic; if any trade fails, the transaction reverts.
+
+---
+
+For more details, see the contract source: `contracts/OrbitFlashArbitrage.sol`
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
 
 2. Copy environment file:
+
    ```bash
    cp .env.example .env
    ```
@@ -97,6 +149,7 @@ The test suite covers:
 - Error handling
 
 Run tests with:
+
 ```bash
 npx hardhat test
 ```
