@@ -5,7 +5,7 @@ Advanced MEV arbitrage system with cross-chain capabilities.
 ## 🏗️ Architecture
 
 - **Microservices**: Modular design with separate services for detection, strategy, and optimization
-- **Shared Types**: Common TypeScript interfaces across all services  
+- **Shared Types**: Common TypeScript interfaces across all services
 - **Smart Contracts**: Hardhat-based flash loan arbitrage executor
 - **Containerized**: Docker-based deployment with orchestration
 - **Real-time**: Redis pub/sub for event-driven communication
@@ -13,18 +13,21 @@ Advanced MEV arbitrage system with cross-chain capabilities.
 ## 📦 Services
 
 ### Core Services
+
 - **arbitrage-detector** (Port 3001): Detects arbitrage opportunities across DEXs
 - **strategy-engine** (Port 3002): Scores and prioritizes opportunities
 - **gas-optimizer** (Port 3003): Optimizes gas strategies for execution
 - **monitoring** (Port 8080): Web dashboard for system monitoring
 
 ### Infrastructure
+
 - **Redis**: Caching and pub/sub messaging
 - **Nginx**: Reverse proxy and load balancing
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js >= 18
 - PNPM >= 8
 - Docker & Docker Compose
@@ -32,6 +35,7 @@ Advanced MEV arbitrage system with cross-chain capabilities.
 ### Local Development
 
 1. **Clone and install dependencies:**
+
 ```bash
 git clone <repository>
 cd orbitflash
@@ -39,15 +43,14 @@ pnpm install
 ```
 
 2. **Build all packages:**
+
 ```bash
 pnpm build
 ```
 
 3. **Start with Docker Compose:**
-```bash
-# Copy environment file
-cp .env.example .env
 
+```bash
 # Start all services
 docker-compose up -d
 
@@ -56,6 +59,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
 4. **Access services:**
+
 - Monitoring Dashboard: http://localhost:8080
 - Arbitrage Detector API: http://localhost:3001
 - Strategy Engine API: http://localhost:3002
@@ -70,7 +74,7 @@ docker run -d -p 6379:6379 redis:alpine
 
 # Start each service in separate terminals
 cd packages/arbitrage-detector && pnpm dev
-cd packages/strategy-engine && pnpm dev  
+cd packages/strategy-engine && pnpm dev
 cd packages/gas-optimizer && pnpm dev
 ```
 
@@ -78,23 +82,34 @@ cd packages/gas-optimizer && pnpm dev
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+Copy in `.env` and configure:
 
 ```bash
-# Network Configuration
-ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
-ARBITRUM_WS_URL=wss://arb1.arbitrum.io/ws
+# -------- Arbitrum Sepolia --------
+ARBITRUM_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+ARBITRUM_WS_URL=wss://sepolia-rollup.arbitrum.io/ws
 
-# Contract Addresses
-ORBIT_FLASH_CONTRACT_ADDRESS=0x...
+# -------- Smart Contract Address --------
+# Replace after deployment
+ORBIT_FLASH_CONTRACT_ADDRESS=
+
+# -------- Routers (these may not exist on Sepolia, leave 0x0 if not deployed) --------
 UNISWAP_V3_ROUTER=0xE592427A0AEce92De3Edee1F18E0157C05861564
 SUSHISWAP_ROUTER=0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506
 BALANCER_VAULT=0xBA12222222228d8Ba445958a75a0704d566BF2C8
 
-# Optimization Parameters
+# -------- Optimization --------
 MIN_PROFIT_THRESHOLD=0.01
 MAX_SLIPPAGE=0.005
 GAS_PRICE_BUFFER_PERCENT=10
+
+# -------- Arbiscan API Key (needed for verification) --------
+ARBISCAN_API_KEY=
+
+# -------- Deployment Wallet --------
+# ⚠️ Test wallet only, not your main funds wallet
+PRIVATE_KEY=
+
 ```
 
 ## 📊 System Flow
@@ -108,17 +123,20 @@ GAS_PRICE_BUFFER_PERCENT=10
 ## 🔗 API Endpoints
 
 ### Arbitrage Detector
+
 - `GET /health` - Service health check
 - `GET /status` - Detection statistics
 - `GET /config` - Current configuration
 
-### Strategy Engine  
+### Strategy Engine
+
 - `GET /health` - Service health check
 - `GET /queue` - Priority queue status
 - `POST /config` - Update scoring configuration
 - `GET /blacklist` - View blacklisted tokens
 
 ### Gas Optimizer
+
 - `GET /health` - Service health check
 - `GET /gas/current` - Current gas information
 - `GET /gas/recommendations` - Gas price recommendations
@@ -130,7 +148,6 @@ Deploy the OrbitFlashArbitrage contract:
 
 ```bash
 cd contracts
-cp .env.example .env
 # Configure PRIVATE_KEY and ARBITRUM_RPC_URL
 pnpm hardhat deploy --network arbitrum
 ```
@@ -138,26 +155,12 @@ pnpm hardhat deploy --network arbitrum
 ## 📈 Monitoring
 
 The monitoring dashboard provides:
+
 - Real-time service health status
 - System performance metrics
 - Arbitrage opportunity statistics
 - Gas optimization insights
 - Redis cache status
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pnpm test
-
-# Test specific service
-pnpm --filter arbitrage-detector test
-pnpm --filter strategy-engine test
-pnpm --filter gas-optimizer test
-
-# Test smart contracts
-cd contracts && pnpm test
-```
 
 ## 🐳 Docker Commands
 
@@ -214,6 +217,7 @@ MIT License - see LICENSE file for details
 ## 📞 Support
 
 For issues and questions:
+
 - Create GitHub issue
 - Check documentation
 - Review logs: `docker-compose logs`
