@@ -1,477 +1,298 @@
-OrbitFlash — Flutter Mobile App
+# 🚀 OrbitFlash Mobile App
+
+The **OrbitFlash Mobile App** is the cross-platform companion for the **OrbitFlash Arbitrage Engine**.  
+It delivers real-time arbitrage opportunities, monitoring, and wallet connectivity in a secure, performant, and user-friendly mobile experience.
+
+This app is built with **Flutter (Dart)** for **iOS & Android**, aligned with the backend microservices and APIs.
+
+---
+
+## 📖 Table of Contents
+1. [Overview](#overview)
+2. [Core Features](#core-features)
+3. [Architecture](#architecture)
+4. [Tech Stack](#tech-stack)
+5. [Setup & Installation](#setup--installation)
+6. [Configuration](#configuration)
+7. [Project Structure](#project-structure)
+8. [API Integration](#api-integration)
+9. [Wallet Integration](#wallet-integration)
+10. [Offline & Caching](#offline--caching)
+11. [Monitoring & Logging](#monitoring--logging)
+12. [Testing](#testing)
+13. [Security](#security)
+14. [CI/CD Pipeline](#cicd-pipeline)
+15. [Contributing](#contributing)
+16. [License](#license)
+
+---
+
+## 📌 Overview
+OrbitFlash is a **high-frequency arbitrage system on Arbitrum**.  
+The mobile app provides **real-time visibility, notifications, and secure wallet interactions** for traders and operators.
+
+It acts as the **user-facing interface** to:
+- Monitor arbitrage signals
+- View live market metrics
+- Receive push alerts
+- Manage subscriptions & tasks
+- Connect wallets (sign-only, no private key exposure)
+- Trigger server-side "execute" requests (on-chain actions remain backend-governed)
+
+---
+
+## 🌟 Core Features
+- **🔐 WalletConnect v2** integration for wallet login & message signing
+- **📡 Real-time WebSocket Feed** for opportunities (`opportunity.new`, `opportunity.update`, `opportunity.executed`)
+- **📊 Live Metrics Dashboard**: success rate, gas efficiency, slippage accuracy
+- **⚡ Offline-first Caching** with retry queue (SQLite + Hive)
+- **📱 Responsive UI** across iOS & Android
+- **📤 Push Notifications** (FCM for Android, APNs for iOS)
+- **🛡️ Secure Storage** of JWT/session tokens (Keychain / Keystore)
+- **🌍 Role-based UI** (observer vs operator)
+- **🎨 Smooth Animations** (Rive/Lottie + GPU-accelerated transitions)
+
+---
+
+## 🏗️ Architecture
+The app follows **Clean Architecture** with **MVVM pattern**:
+
+```
+
+lib/
+├── core/             # Constants, themes, utils
+├── data/             # API clients, models, repositories
+├── domain/           # Entities, use cases
+├── presentation/     # Screens, widgets, animations
+├── services/         # Wallet, push, logging, caching
+├── main.dart         # App entry point
+
+````
+
+- **State Management**: Riverpod + StateNotifier  
+- **Navigation**: GoRouter  
+- **Offline Cache**: Hive + SQLite  
+- **Dependency Injection**: GetIt + Riverpod  
+- **Animations**: Rive + Lottie + Impeller (GPU)
+
+---
+
+## ⚙️ Tech Stack
+- **Framework**: Flutter (Dart 3.x, Flutter 3.19+)  
+- **State Management**: Riverpod  
+- **Animations**: Rive, Lottie, AnimatedBuilder  
+- **Database**: SQLite (drift) + Hive (key-value)  
+- **Network**: Dio (REST) + WebSocket channel  
+- **Wallet**: WalletConnect v2 + Viem/Ethers bindings  
+- **Push Notifications**: Firebase Cloud Messaging (Android) / APNs (iOS)  
+- **Error Tracking**: Sentry  
+- **Analytics**: Firebase Analytics  
+- **Testing**: Flutter Test, Mockito, Integration Tests  
+- **CI/CD**: GitHub Actions + Fastlane + Firebase App Distribution  
+
+---
+
+## 🚀 Setup & Installation
+
+### Prerequisites
+- Flutter SDK ≥ 3.19  
+- Dart ≥ 3.3  
+- Android Studio / Xcode  
+- Firebase CLI (for push notifications)  
+- Access to OrbitFlash backend APIs  
 
-Production-ready cross-platform (iOS & Android) mobile client for OrbitFlash — a realtime, L2-first arbitrage monitoring & operator app that integrates with OrbitFlash backend services (opportunity feed, tasks, metrics). This README explains architecture, install/build steps, auth/wallet flows, API contract, testing, CI, security, and release guidance in detail so a dev or juror can immediately run, audit, or extend the app.
+### Clone the repo
+```bash
+git clone https://github.com/orbitflash/orbitflash-mobile.git
+cd orbitflash-mobile
+````
 
-Table of contents
+### Install dependencies
 
-What this app is
-
-Key features & user journeys
-
-Architecture & tech stack
-
-Project structure
-
-Environment variables & configuration
-
-Auth & Wallet flow (challenge → sign → JWT)
-
-Backend API contract & WebSocket events (exact)
-
-Local development: setup & run
-
-Mock server (for local dev & QA)
-
-Testing: unit, integration, e2e
-
-CI / GitHub Actions example
-
-Production build & release
-
-Security & hardening checklist
-
-Monitoring, logging & observability
-
-Acceptance checklist for QA / Jury
-
-Troubleshooting & FAQ
-
-Contributing & code style
-
-License & contact
-
-What this app is
-
-OrbitFlash mobile is a single-screen, scrollable mobile app built in Flutter + TypeScript-style logic (Dart) that provides:
-
-Real-time feed of arbitrage opportunities detected on Arbitrum.
-
-Wallet connect & challenge-based authentication (WalletConnect v2).
-
-Push + in-app alerts for subscription criteria.
-
-Task request flow: mobile can request execution; actual on-chain flash-loan execution is performed server-side and governed (multisig/HSM).
-
-Offline cache & queue for resilient UX when network is intermittent.
-
-Secure credential storage and role-based UI (observer vs operator).
-
-This README documents how to run, extend, test, and ship the app.
-
-Key features & user journeys
-
-Observer: Connect wallet → view live opportunities → subscribe to alerts → view historical logs.
-
-Operator: Connect + authenticated role → request execution (POST /api/v1/opportunities/:id/execute) → watch taskId progress via WebSocket.
-
-Admin QA: Toggle mock-mode → replay market events → verify acceptance checks and alerts.
-
-Architecture & tech stack
-
-Frontend (Flutter)
-
-Language: Dart (Flutter stable)
-
-State: flutter_riverpod for global & asynchronous state
-
-HTTP: dio (with interceptors for JWT)
-
-WebSocket: web_socket_channel or socket_io_client (reconnect logic)
-
-Wallet: walletconnect_dart + web3dart for signature utilities
-
-Secure storage: flutter_secure_storage (Keychain / Keystore)
-
-Local DB / cache: sqflite or hive (for opportunity cache & queued actions)
-
-Push notifications: firebase_messaging (FCM) + platform APNs setup for iOS
-
-Animations: rive / lottie for hero visuals; use Animated* widgets for lightweight motion
-
-Charts: fl_chart or charts_flutter for KPI widgets
-
-Testing: flutter_test (unit), integration_test (integration/e2e), optional Detox for more heavy flows
-
-CI: GitHub Actions (macos + ubuntu runners) to run tests, build Android, and produce artifacts
-
-Backend (integrates with OrbitFlash services)
-
-REST / WebSocket API contract described below. Mobile app expects those endpoints.
-
-Project structure (recommended)
-/orbitflash-flutter
-├─ android/
-├─ ios/
-├─ lib/
-│  ├─ main.dart
-│  ├─ app.dart
-│  ├─ widgets/
-│  │  ├─ navbar.dart
-│  │  ├─ hero_card.dart
-│  │  └─ opportunity_card.dart
-│  ├─ screens/
-│  │  └─ home_screen.dart
-│  ├─ providers/
-│  │  ├─ auth_provider.dart
-│  │  ├─ ws_provider.dart
-│  │  └─ opportunities_provider.dart
-│  ├─ services/
-│  │  ├─ api.dart         // dio instance + interceptors
-│  │  ├─ auth_service.dart
-│  │  ├─ ws_service.dart
-│  │  └─ push_service.dart
-│  ├─ models/
-│  │  └─ opportunity.dart
-│  ├─ storage/
-│  │  └─ local_db.dart   // sqlite/hive wrapper
-│  └─ utils/
-│     └─ format.dart
-├─ test/
-├─ integration_test/
-├─ assets/
-└─ README.md
-
-Environment variables & configuration
-
-Place runtime config in a non-committed secrets.json or use CI secrets / native config. Example .env like fields (never commit secrets):
-
-MOBILE_APP_ENV=development
-API_BASE_URL=https://api.orbitflash.example
-WS_BASE_URL=wss://ws.orbitflash.example
-WALLETCONNECT_PROJECT_ID=TODO
-FIREBASE_SERVER_KEY=TODO            # for push registration with backend
-SENTRY_DSN=TODO
-PUSH_SENDER_ID=TODO                 # FCM
-
-
-In code, treat these as compile-time or runtime config (use flutter_dotenv or platform environment variables injected by CI).
-
-Auth & Wallet flow (challenge → sign → JWT) — exact steps
-
-This is the secure, required flow your backend expects (do not bypass).
-
-Connect wallet via WalletConnect v2
-
-Start a WalletConnect session from the app (walletconnect_dart).
-
-Obtain the address and chainId once the user approves.
-
-Request challenge from server
-
-final resp = await api.post('/api/v1/auth/challenge', data: {'address': address});
-final challenge = resp.data['challenge'];    // "Sign this: login:metadata:..."
-final challengeId = resp.data['challengeId'];
-
-
-Sign the challenge using the connected wallet
-
-Use WalletConnect personal_sign or EIP-712 if supported:
-
-final signature = await walletConnector.personalSign(message: challenge, address: address);
-
-
-Verify signature and retrieve JWT
-
-final verifyResp = await api.post('/api/v1/auth/verify', data: {
-  'address': address,
-  'signature': signature,
-  'challengeId': challengeId
-});
-final token = verifyResp.data['token'];
-// store token in secure storage
-await secureStorage.write(key: 'jwt', value: token);
-dio.options.headers['Authorization'] = 'Bearer $token';
-
-
-WebSocket auth
-
-Connect to WS_BASE_URL with ?token=<JWT> or send an auth event immediately after connecting.
-
-WebSocket must support both unauthenticated public feed and authenticated private feed.
-
-Logout / revoke
-
-On logout, clear SecureStorage and optionally call POST /api/v1/auth/revoke if implemented.
-
-Important: Never store private keys or raw mnemonics in the mobile app. All signing is performed by the user's wallet app via WalletConnect.
-
-Backend API contract (exact endpoints and expected JSON)
-
-Use these endpoints exactly as specified. The mobile app integrates with them.
-
-GET /api/v1/opportunities/recent?limit=50
-
-{
-  "data": [ { /* Opportunity object (see below) */ } ],
-  "meta": { "limit": 50, "cursor": "..." }
-}
-
-
-GET /api/v1/opportunities/:id — detailed fields (historicalSlippage[], estimatedReturnUsd, route)
-
-POST /api/v1/subscriptions
-Request body:
-
-{
-  "type": "opportunity_threshold",
-  "criteria": { "minProfitUsd": 50, "minConfidence": 0.8 },
-  "channels": ["push", "in_app"]
-}
-
-
-POST /api/v1/opportunities/:id/execute
-Request body:
-
-{
-  "requestedBy": "wallet:0xabc...",
-  "nonce": "uuid-or-timestamp",
-  "authSignature": "0x..." // optional user signature
-}
-
-
-Response:
-
-{ "taskId": "task_123", "status": "queued", "message": "Execution queued" }
-
-
-GET /api/v1/tasks/:taskId — get logs, txHash, status
-
-GET /api/v1/user/me — returns roles (operator/observer)
-
-POST /api/v1/push/register
-
-{ "token": "<FCM/APNs token>", "wallet": "0x...", "platform": "android|ios" }
-
-
-GET /api/v1/metrics/overview — KPIs (executionSuccessRate, avgExecutionTime, profitPerTx)
-
-WebSocket event stream (exact events the app must handle)
-
-Connect: wss://.../v1/stream?token=<JWT_OR_NULL>
-
-Event types:
-
-opportunity.new — payload: Opportunity
-
-opportunity.update — payload: Opportunity (updated fields)
-
-opportunity.executed — payload: { id, taskId, txHash, profitRealized, executedAt }
-
-alert.system — payload: { level: "info|warning|critical", message, timestamp }
-
-metrics.update — payload: { executionSuccessRate, avgExecutionTime, profitPerTx }
-
-Reconnect & backfill: on reconnect, client should send last seen timestamp: { "lastSeen": "2025-09-05T12:00:00Z" } to receive missed events.
-
-Local development: setup & run
-Prerequisites
-
-Flutter SDK (stable) installed (>= 3.x). Use flutter doctor to validate.
-
-Android SDK or Xcode for iOS.
-
-Node.js & yarn/npm for mock server (optional).
-
-adb for Android emulator.
-
-Clone & setup
-git clone git@github.com:your-org/orbitflash-flutter.git
-cd orbitflash-flutter
+```bash
 flutter pub get
-# create local config file (do NOT commit)
-cp config/example.secrets.json config/secrets.json
-# edit config/secrets.json with your API_BASE_URL and WALLETCONNECT_PROJECT_ID
+```
 
-Run on device / emulator
-flutter run              # choose emulator or connected device
-# or run specific:
-flutter run -d emulator-5554
+### Configure Firebase (Push Notifications)
 
-Quick debug tips
+1. Add `google-services.json` (Android: `android/app/`)
+2. Add `GoogleService-Info.plist` (iOS: `ios/Runner/`)
+3. Enable FCM + APNs in Firebase Console
 
-Use flutter logs to view runtime logs.
+### Run the app
 
-Enable verbose Dio logging during dev (toggle via env).
+```bash
+flutter run
+```
 
-Mock server (recommended for QA)
+---
 
-A simple Node/Express mock server that implements the REST and WebSocket contract above is required for offline QA. Provide mock/ folder with:
+## 🔧 Configuration
 
-npm install
+Create a `.env` file in the root:
 
-npm run start → serves http://localhost:3000 & ws ws://localhost:3000/stream
+```env
+API_BASE_URL=https://api.orbitflash.xyz/api/v1
+WS_BASE_URL=wss://api.orbitflash.xyz/ws
+WALLETCONNECT_PROJECT_ID=your_project_id_here
+SENTRY_DSN=your_sentry_dsn_here
+PUSH_SERVER_API_KEY=your_push_key
+```
 
-Admin endpoints:
+---
 
-POST /mock/events to emit an opportunity.new or opportunity.executed to all WS clients (helpful for testing push & UI).
+## 🗂️ Project Structure
 
-Use:
+```
+lib/
+├── core/
+│   ├── theme.dart
+│   ├── constants.dart
+│   └── utils.dart
+├── data/
+│   ├── models/
+│   ├── repositories/
+│   └── api_client.dart
+├── domain/
+│   ├── entities/
+│   └── usecases/
+├── presentation/
+│   ├── screens/
+│   ├── widgets/
+│   └── animations/
+├── services/
+│   ├── wallet_service.dart
+│   ├── push_service.dart
+│   └── cache_service.dart
+└── main.dart
+```
 
-cd mock
-npm ci
-npm run start
-# emit an event:
-curl -X POST http://localhost:3000/mock/events -H 'Content-Type: application/json' -d '{"type":"opportunity.new", "payload":{...}}'
+---
 
-Testing: unit, integration, e2e
-Unit tests
+## 🌐 API Integration
 
-Use flutter_test for widget and unit tests.
+The app consumes OrbitFlash backend REST & WebSocket APIs:
 
+### REST Endpoints
+
+* `POST /auth/challenge` → wallet sign-in challenge
+* `POST /auth/verify` → verify signature, get JWT
+* `GET /opportunities` → list opportunities
+* `POST /opportunities/:id/execute` → request server execution
+* `GET /metrics/overview` → system metrics
+* `GET /user/me` → user profile
+* `POST /push/register` → register device for notifications
+
+### WebSocket Events
+
+* `opportunity.new`
+* `opportunity.update`
+* `opportunity.executed`
+* `alert.system`
+* `metrics.update`
+
+---
+
+## 🔑 Wallet Integration
+
+* WalletConnect v2 (Flutter SDK)
+* Session management via secure storage
+* Supports Rainbow, MetaMask, Coinbase Wallet
+* Sign-only authentication (no raw private key exposure)
+* Fallback: “View-Only Mode” if no wallet available
+
+---
+
+## 📦 Offline & Caching
+
+* Hive for key-value (JWT, preferences, sessions)
+* SQLite (Drift) for opportunity cache & task queue
+* Retry mechanism with exponential backoff
+* Offline-first: users can browse cached opportunities
+
+---
+
+## 📊 Monitoring & Logging
+
+* **Sentry** for error reporting
+* **Logger package** for structured logs
+* **Firebase Analytics** for user behavior
+* Audit logs for every execution request
+
+---
+
+## 🧪 Testing
+
+### Unit Tests
+
+```bash
 flutter test
+```
 
+### Integration Tests
 
-Key test targets: auth flow (mocking WalletConnect), opportunities provider, offline queue logic.
+```bash
+flutter drive --target=test_driver/app.dart
+```
 
-Integration / e2e
+### Coverage
 
-Use integration_test package:
+```bash
+flutter test --coverage
+```
 
-flutter test integration_test/app_test.dart
+---
 
+## 🔐 Security
 
-Test scenarios:
+* Secure JWT storage via Flutter Secure Storage (Keychain/Keystore)
+* Certificate pinning for API calls
+* Enforced HTTPS for all requests
+* No secrets in repo (all via `.env`)
+* Strict input validation before API calls
+* Role-based UI rendering (observer vs operator)
 
-Connect wallet (mock)
+---
 
-Load feed, tap opportunity details
+## ⚡ CI/CD Pipeline
 
-Subscribe and receive mock opportunity.new push
+* **GitHub Actions** for CI (lint, test, build)
+* **Fastlane** for deployment:
 
-Code coverage
+  * Beta builds → Firebase App Distribution
+  * Production builds → Play Store / App Store
+* Auto code signing via EAS & Fastlane Match
+* `.env.example` provided for secret placeholders
 
-Use lcov export and CI reporter to fail if critical coverage < 80% for providers and services.
+---
 
-CI / GitHub Actions example (summary)
+## 🤝 Contributing
 
-A CI workflow should:
+1. Fork the repo
+2. Create a feature branch: `git checkout -b feature/amazing`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push: `git push origin feature/amazing`
+5. Create Pull Request
 
-Install Flutter SDK (setup-flutter action)
+---
 
-flutter pub get
+## 📜 License
 
-flutter analyze
+MIT License © 2025 OrbitFlash
+Free to use, modify, and distribute under the terms of the license.
 
-flutter test
+---
 
-Build Android artifact (apk) on ubuntu-latest:
+## 📹 Demo Video
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: subosito/flutter-action@v2
-      - run: flutter pub get
-      - run: flutter test --coverage
-      - run: flutter build apk --release
-      - uses: actions/upload-artifact@v3
-        with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+A walkthrough demo (1–3 mins) is included in `/docs/demo.mp4`.
 
+---
 
-Add macOS runner to build iOS artifacts (requires macOS runner, codesigning & provisioning credentials via secrets).
+```
 
-Production build & release
-Android
-# update android/gradle.properties, keystore signing config (secure)
-flutter build apk --release
-# or for Play Store bundle:
-flutter build appbundle --release
+---
 
-
-Upload to Google Play Console internal track.
-
-iOS
-
-flutter build ipa --release on macOS with correct provisioning.
-
-Use Xcode or fastlane for uploading to TestFlight.
-
-Notes: Keep signing keys secure (CI secret manager). Use ephemeral signing for CI where possible.
-
-Security & hardening checklist (must satisfy before production)
-
- No secrets checked into repo. .gitignore includes signing keys and config/secrets.json.
-
- All tokens and JWT stored in flutter_secure_storage.
-
- Certificate pinning for API endpoints in production (library or native network layer).
-
- App revocation endpoint: ability to revoke JWT server-side and force-app logout.
-
- Strict rate-limiting on any execute button (client-side and server-side).
-
- Logging scrubbed: never log signed messages or raw signatures.
-
- Sentry integrated and configured not to log PII.
-
- Dependency checks and regular audits (keep packages up-to-date).
-
-Monitoring, logging & observability
-
-In-app basic telemetry: connect events, subscribe events, request execute attempts (send to analytics with anonymized IDs).
-
-Crash reporting: Sentry or similar.
-
-Health-check: on app start, call GET /api/v1/health and display backend status indicator in header.
-
-Acceptance checklist for QA / Jury
-
- App builds & runs on Android and iOS emulators.
-
- WalletConnect session initiates and returns address (mock wallet acceptable).
-
- Challenge-sign-auth flow yields JWT and WebSocket auth works.
-
- Live feed displays opportunity.new events and persists most recent 200 items offline.
-
- Subscribe to alert and receive push/in-app messages on mock events.
-
- Request Execute returns taskId from mock server and updates status via WebSocket (opportunity.executed).
-
- All sensitive storage uses secure storage.
-
- UI respects prefers-reduced-motion (user toggles in settings).
-
-Troubleshooting & FAQ
-
-Q: WalletConnect doesn’t open wallet app on device
-
-Ensure deep linking is configured for WalletConnect and the wallet app supports incoming connection. Use a test wallet like Rainbow or MetaMask mobile.
-
-Q: WebSocket disconnects frequently
-
-Implement exponential backoff reconnect and send lastSeen timestamp on reconnect to backfill missed events.
-
-Q: Mock server not streaming events
-
-Check mock server logs; ensure POST /mock/events returns 200 and emits to all connected WS clients.
-
-Q: Push notifications not received on iOS
-
-Confirm APNs configuration, push certificate, and that you used correct provisioning profile and entitlements.
-
-Contributing & code style
-
-Use flutter format and dart analyze before PR.
-
-Tests required for new providers or services.
-
-Branching: feature branches, PRs to develop, protected main.
-
-Use CHANGELOG.md and Semantic Versioning.
-
-License & contact
-
-License: MIT (or choose org license). Include LICENSE file.
-
-Contact / maintainers: add team email, Slack/Discord channel for DevRel and Ops.
-
-Final notes (developer guidance)
-
-The mobile app should never attempt to run a flash loan locally — it only requests and observes. That constraint is central to operational safety and regulatory prudence.
-
-Include a short "Why server-side execution" note in the app About modal to reassure jurors and users.
-
-Provide a short screencast (1–2 minutes) that demonstrates connecting a mock wallet, watching a live opportunity feed, subscribing to an alert, and requesting an execution (using mock server). This is invaluable for juries.
+⚡ This is the **final one-shot `README.md` file**.  
+Do you also want me to generate the **skeleton Flutter folder with placeholder Dart files** so that your devs (or Bloom.diy) get a **ready-to-extend project** aligned with this README?
+```
